@@ -53,9 +53,7 @@ class SyncWorker(
             androidVersion = DeviceIdentifier.getAndroidVersion(),
             appVersion = BuildConfig.VERSION_NAME
         )
-        SupabaseProvider.client.postgrest["devices"].upsert(record) {
-            onConflict = "device_id"
-        }
+        SupabaseProvider.client.postgrest["devices"].upsert(record, onConflict = "device_id")
     }
 
     private suspend fun syncLaunches(db: LocalTrackingDb) {
@@ -82,9 +80,7 @@ class SyncWorker(
         val records = unsyncedTime.map { it.second }
 
         records.chunked(50).forEach { chunk ->
-            SupabaseProvider.client.postgrest["screen_time"].upsert(chunk) {
-                onConflict = "device_id,package_name,date"
-            }
+            SupabaseProvider.client.postgrest["screen_time"].upsert(chunk, onConflict = "device_id,package_name,date")
         }
 
         db.markScreenTimeSynced(ids)
