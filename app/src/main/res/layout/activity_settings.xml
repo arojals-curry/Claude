@@ -193,6 +193,73 @@
                     android:layout_marginTop="2dp" />
             </LinearLayout>
 
+            <!-- Tracking Section -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/tracking"
+                android:textSize="14sp"
+                android:textColor="@color/accent"
+                android:fontFamily="sans-serif-medium"
+                android:textAllCaps="true"
+                android:letterSpacing="0.1"
+                android:layout_marginTop="24dp"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Usage Access Permission -->
+            <LinearLayout
+                android:id="@+id/usagePermissionOption"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingVertical="14dp"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/usage_access_permission"
+                    android:textSize="17sp"
+                    android:textColor="@color/text_primary_dark" />
+
+                <TextView
+                    android:id="@+id/usagePermissionValue"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="14sp"
+                    android:textColor="@color/text_secondary_dark"
+                    android:layout_marginTop="2dp" />
+            </LinearLayout>
+
+            <!-- Force Sync -->
+            <LinearLayout
+                android:id="@+id/forceSyncOption"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingVertical="14dp"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/sync_now"
+                    android:textSize="17sp"
+                    android:textColor="@color/text_primary_dark" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/sync_description"
+                    android:textSize="14sp"
+                    android:textColor="@color/text_secondary_dark"
+                    android:layout_marginTop="2dp" />
+            </LinearLayout>
+
             <!-- About Section -->
             <TextView
                 android:layout_width="wrap_content"

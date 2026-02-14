@@ -1,12 +1,20 @@
 package com.minimalist.launcher.activity
 
+import android.content.Intent
 import android.os.Bundle
+import android.provider.Settings
 import android.view.View
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 import com.minimalist.launcher.BuildConfig
 import com.minimalist.launcher.R
 import com.minimalist.launcher.databinding.ActivitySettingsBinding
+import com.minimalist.launcher.tracking.ScreenTimeCollector
+import com.minimalist.launcher.tracking.SyncWorker
 import com.minimalist.launcher.util.PrefsManager
 
 class SettingsActivity : AppCompatActivity() {
@@ -23,6 +31,11 @@ class SettingsActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         setupUI()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        updateUsagePermissionStatus()
     }
 
     private fun applyTheme() {
@@ -68,8 +81,33 @@ class SettingsActivity : AppCompatActivity() {
         updateMaxFavoritesLabel()
         binding.maxFavoritesOption.setOnClickListener { showMaxFavoritesDialog() }
 
+        // Tracking: usage access permission
+        updateUsagePermissionStatus()
+        binding.usagePermissionOption.setOnClickListener {
+            startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+        }
+
+        // Tracking: force sync now
+        binding.forceSyncOption.setOnClickListener {
+            WorkManager.getInstance(this).enqueueUniqueWork(
+                "manual_sync",
+                ExistingWorkPolicy.REPLACE,
+                OneTimeWorkRequestBuilder<SyncWorker>().build()
+            )
+            Toast.makeText(this, R.string.sync_started, Toast.LENGTH_SHORT).show()
+        }
+
         // Version
         binding.versionText.text = "${getString(R.string.version)} ${BuildConfig.VERSION_NAME}"
+    }
+
+    private fun updateUsagePermissionStatus() {
+        val collector = ScreenTimeCollector(this)
+        val hasPermission = collector.hasUsagePermission()
+        binding.usagePermissionValue.text = if (hasPermission)
+            getString(R.string.permission_granted)
+        else
+            getString(R.string.permission_not_granted)
     }
 
     private fun updateThemeLabel() {

@@ -17,6 +17,7 @@ import com.minimalist.launcher.R
 import com.minimalist.launcher.adapter.FavoritesAdapter
 import com.minimalist.launcher.databinding.ActivityHomeBinding
 import com.minimalist.launcher.model.AppInfo
+import com.minimalist.launcher.tracking.ActivityTracker
 import com.minimalist.launcher.util.AppUtils
 import com.minimalist.launcher.util.PrefsManager
 import java.text.SimpleDateFormat
@@ -29,6 +30,7 @@ class HomeActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityHomeBinding
     private lateinit var prefs: PrefsManager
+    private lateinit var tracker: ActivityTracker
     private lateinit var favoritesAdapter: FavoritesAdapter
     private lateinit var gestureDetector: GestureDetectorCompat
 
@@ -44,6 +46,7 @@ class HomeActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs = PrefsManager(this)
+        tracker = ActivityTracker.getInstance(this)
         applyTheme()
 
         binding = ActivityHomeBinding.inflate(layoutInflater)
@@ -112,7 +115,10 @@ class HomeActivity : AppCompatActivity() {
 
     private fun setupFavorites() {
         favoritesAdapter = FavoritesAdapter(
-            onClick = { app -> AppUtils.launchApp(this, app) },
+            onClick = { app ->
+                tracker.logAppLaunch(app, ActivityTracker.LaunchSource.FAVORITES)
+                AppUtils.launchApp(this, app)
+            },
             onLongClick = { app -> showFavoriteContextMenu(app) }
         )
         binding.favoritesRecycler.apply {
@@ -216,6 +222,7 @@ class HomeActivity : AppCompatActivity() {
         popup.setOnMenuItemClickListener { item ->
             when (item.itemId) {
                 1 -> {
+                    tracker.logAppLaunch(app, ActivityTracker.LaunchSource.CONTEXT_MENU)
                     AppUtils.launchApp(this, app)
                     true
                 }

@@ -15,6 +15,7 @@ import com.minimalist.launcher.R
 import com.minimalist.launcher.adapter.AppDrawerAdapter
 import com.minimalist.launcher.databinding.ActivityAppDrawerBinding
 import com.minimalist.launcher.model.AppInfo
+import com.minimalist.launcher.tracking.ActivityTracker
 import com.minimalist.launcher.util.AppUtils
 import com.minimalist.launcher.util.PrefsManager
 
@@ -22,12 +23,15 @@ class AppDrawerActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityAppDrawerBinding
     private lateinit var prefs: PrefsManager
+    private lateinit var tracker: ActivityTracker
     private lateinit var adapter: AppDrawerAdapter
     private var allApps: List<AppInfo> = emptyList()
+    private var currentSearchQuery: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs = PrefsManager(this)
+        tracker = ActivityTracker.getInstance(this)
         applyTheme()
 
         binding = ActivityAppDrawerBinding.inflate(layoutInflater)
@@ -57,6 +61,11 @@ class AppDrawerActivity : AppCompatActivity() {
     private fun setupAppList() {
         adapter = AppDrawerAdapter(
             onClick = { app ->
+                val source = if (currentSearchQuery.isNotEmpty())
+                    ActivityTracker.LaunchSource.SEARCH
+                else
+                    ActivityTracker.LaunchSource.DRAWER
+                tracker.logAppLaunch(app, source)
                 AppUtils.launchApp(this, app)
                 finish()
             },
@@ -90,7 +99,8 @@ class AppDrawerActivity : AppCompatActivity() {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
             override fun afterTextChanged(s: Editable?) {
-                filterApps(s?.toString() ?: "")
+                currentSearchQuery = s?.toString() ?: ""
+                filterApps(currentSearchQuery)
             }
         })
     }
@@ -128,6 +138,7 @@ class AppDrawerActivity : AppCompatActivity() {
         popup.setOnMenuItemClickListener { item ->
             when (item.itemId) {
                 1 -> {
+                    tracker.logAppLaunch(app, ActivityTracker.LaunchSource.CONTEXT_MENU)
                     AppUtils.launchApp(this, app)
                     finish()
                     true

@@ -31,4 +31,13 @@
     <string name="ok">OK</string>
     <string name="rename_app">Rename app</string>
     <string name="enter_custom_name">Enter custom name</string>
+
+    <!-- Tracking -->
+    <string name="tracking">Tracking</string>
+    <string name="usage_access_permission">Usage access permission</string>
+    <string name="permission_granted">Granted — screen time tracking active</string>
+    <string name="permission_not_granted">Tap to grant — required for screen time</string>
+    <string name="sync_now">Sync now</string>
+    <string name="sync_description">Force upload tracking data to Supabase</string>
+    <string name="sync_started">Sync started…</string>
 </resources>
