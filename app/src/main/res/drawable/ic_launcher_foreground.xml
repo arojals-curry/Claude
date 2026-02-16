@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Simple "M" letter for Minimalist -->
+    <path
+        android:fillColor="#EEEEEE"
+        android:pathData="M34,72V36h6l14,22 14,-22h6v36h-6V48l-14,22 -14,-22v24z" />
+</vector>

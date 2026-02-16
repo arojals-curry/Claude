@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="home_padding">32dp</dimen>
+    <dimen name="clock_text_size">64sp</dimen>
+    <dimen name="date_text_size">18sp</dimen>
+    <dimen name="battery_text_size">14sp</dimen>
+    <dimen name="favorite_text_size">22sp</dimen>
+    <dimen name="app_list_text_size">20sp</dimen>
+    <dimen name="search_text_size">18sp</dimen>
+    <dimen name="letter_indicator_size">14sp</dimen>
+    <dimen name="app_item_padding_vertical">14dp</dimen>
+    <dimen name="app_item_padding_horizontal">24dp</dimen>
+</resources>
