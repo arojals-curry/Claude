@@ -420,6 +420,12 @@
         return;
       }
 
+      // Vercel Hobby plan: max 4.5MB body
+      if (file.size > 4.5 * 1024 * 1024) {
+        showError('El archivo pesa ' + (file.size / (1024*1024)).toFixed(1) + 'MB. El limite de Vercel es 4.5MB. Reduce el CSV (elimina columnas innecesarias o filtra filas).');
+        return;
+      }
+
       const btn = document.getElementById('runBtn');
       btn.disabled = true;
       btn.innerHTML = '<div class="spinner"></div> Procesando...';
@@ -438,6 +444,21 @@
 
       try {
         const resp = await fetch('/api/analyze', { method: 'POST', body: formData });
+
+        // Handle non-JSON responses (e.g. Vercel 413 "Request Entity Too Large")
+        const contentType = resp.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+          const text = await resp.text();
+          if (resp.status === 413 || text.includes('Entity Too Large')) {
+            showError('El archivo es demasiado grande. Vercel permite max 4.5MB. Reduce el CSV antes de subirlo.');
+          } else {
+            showError('Error del servidor (' + resp.status + '): ' + text.substring(0, 200));
+          }
+          btn.disabled = false;
+          btn.innerHTML = 'Ejecutar An&aacute;lisis';
+          return;
+        }
+
         const data = await resp.json();
 
         if (data.logs && data.logs.length) {
