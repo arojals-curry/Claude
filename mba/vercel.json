@@ -1,0 +1,13 @@
+{
+  "buildCommand": "",
+  "outputDirectory": "public",
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/$1" }
+  ],
+  "functions": {
+    "api/analyze.py": {
+      "maxDuration": 60,
+      "memory": 1024
+    }
+  }
+}
