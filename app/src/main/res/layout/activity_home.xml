@@ -45,14 +45,28 @@
         app:layout_constraintTop_toBottomOf="@id/dateText"
         app:layout_constraintStart_toStartOf="parent" />
 
+    <!-- Rive Avatar -->
+    <app.rive.runtime.kotlin.RiveAnimationView
+        android:id="@+id/avatarView"
+        android:layout_width="220dp"
+        android:layout_height="220dp"
+        android:layout_marginTop="16dp"
+        app:riveFit="CONTAIN"
+        app:riveAlignment="CENTER"
+        app:riveAutoPlay="true"
+        app:riveTouchPassThrough="true"
+        app:layout_constraintTop_toBottomOf="@id/batteryText"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
     <!-- Favorite Apps List -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/favoritesRecycler"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_marginTop="32dp"
+        android:layout_marginTop="16dp"
         android:clipToPadding="false"
-        app:layout_constraintTop_toBottomOf="@id/batteryText"
+        app:layout_constraintTop_toBottomOf="@id/avatarView"
         app:layout_constraintBottom_toTopOf="@id/swipeHint"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />

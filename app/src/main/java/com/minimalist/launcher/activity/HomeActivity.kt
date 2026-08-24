@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.BatteryManager
 import android.os.Bundle
+import android.util.Log
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.View
@@ -13,6 +14,9 @@ import android.widget.PopupMenu
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.GestureDetectorCompat
 import androidx.recyclerview.widget.LinearLayoutManager
+import app.rive.runtime.kotlin.core.Alignment
+import app.rive.runtime.kotlin.core.Fit
+import app.rive.runtime.kotlin.core.Loop
 import com.minimalist.launcher.R
 import com.minimalist.launcher.adapter.FavoritesAdapter
 import com.minimalist.launcher.databinding.ActivityHomeBinding
@@ -20,6 +24,7 @@ import com.minimalist.launcher.model.AppInfo
 import com.minimalist.launcher.tracking.ActivityTracker
 import com.minimalist.launcher.util.AppUtils
 import com.minimalist.launcher.util.PrefsManager
+import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -36,6 +41,7 @@ class HomeActivity : AppCompatActivity() {
 
     private var clockTimer: Timer? = null
     private var allApps: List<AppInfo> = emptyList()
+    private var avatarLoaded = false
 
     private val packageReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -54,6 +60,7 @@ class HomeActivity : AppCompatActivity() {
 
         setupFavorites()
         setupGestures()
+        setupAvatar()
         registerPackageReceiver()
     }
 
@@ -62,6 +69,7 @@ class HomeActivity : AppCompatActivity() {
         refreshApps()
         startClock()
         updateBattery()
+        updateAvatarVisibility()
     }
 
     override fun onPause() {
@@ -199,6 +207,31 @@ class HomeActivity : AppCompatActivity() {
         }
     }
 
+    private fun setupAvatar() {
+        try {
+            val bytes = assets.open(AVATAR_ASSET_FILE).use { it.readBytes() }
+            binding.avatarView.setRiveBytes(
+                bytes,
+                autoplay = true,
+                fit = Fit.CONTAIN,
+                alignment = Alignment.CENTER,
+                loop = Loop.AUTO
+            )
+            avatarLoaded = true
+        } catch (e: IOException) {
+            // No avatar.riv bundled yet — hide the view instead of crashing.
+            avatarLoaded = false
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to load Rive avatar", e)
+            avatarLoaded = false
+        }
+        updateAvatarVisibility()
+    }
+
+    private fun updateAvatarVisibility() {
+        binding.avatarView.visibility = if (avatarLoaded && prefs.showAvatar) View.VISIBLE else View.GONE
+    }
+
     private fun refreshApps() {
         allApps = AppUtils.getInstalledApps(this)
         loadFavorites()
@@ -299,7 +332,11 @@ class HomeActivity : AppCompatActivity() {
     }
 
     companion object {
+        private const val TAG = "HomeActivity"
         private const val SWIPE_THRESHOLD = 100
         private const val SWIPE_VELOCITY = 100
+
+        // Place a Rive file named "avatar.riv" in app/src/main/assets/ to enable the avatar.
+        private const val AVATAR_ASSET_FILE = "avatar.riv"
     }
 }

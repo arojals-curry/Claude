@@ -46,6 +46,10 @@ dependencies {
     implementation 'androidx.recyclerview:recyclerview:1.3.2'
     implementation 'androidx.preference:preference-ktx:1.2.1'
 
+    // Rive avatar
+    implementation 'app.rive:rive-android:11.9.2'
+    implementation 'androidx.startup:startup-runtime:1.1.1'
+
     // Supabase
     implementation platform('io.github.jan-tennert.supabase:bom:2.2.3')
     implementation 'io.github.jan-tennert.supabase:postgrest-kt'

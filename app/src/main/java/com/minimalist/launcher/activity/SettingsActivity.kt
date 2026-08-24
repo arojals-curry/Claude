@@ -77,6 +77,11 @@ class SettingsActivity : AppCompatActivity() {
             prefs.showBattery = isChecked
         }
 
+        binding.switchShowAvatar.isChecked = prefs.showAvatar
+        binding.switchShowAvatar.setOnCheckedChangeListener { _, isChecked ->
+            prefs.showAvatar = isChecked
+        }
+
         // Max favorites
         updateMaxFavoritesLabel()
         binding.maxFavoritesOption.setOnClickListener { showMaxFavoritesDialog() }

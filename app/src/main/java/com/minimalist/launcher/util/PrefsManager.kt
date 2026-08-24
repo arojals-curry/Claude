@@ -20,6 +20,10 @@ class PrefsManager(context: Context) {
         get() = prefs.getBoolean(KEY_SHOW_BATTERY, true)
         set(value) = prefs.edit().putBoolean(KEY_SHOW_BATTERY, value).apply()
 
+    var showAvatar: Boolean
+        get() = prefs.getBoolean(KEY_SHOW_AVATAR, true)
+        set(value) = prefs.edit().putBoolean(KEY_SHOW_AVATAR, value).apply()
+
     var theme: String
         get() = prefs.getString(KEY_THEME, THEME_DARK) ?: THEME_DARK
         set(value) = prefs.edit().putString(KEY_THEME, value).apply()
@@ -72,6 +76,7 @@ class PrefsManager(context: Context) {
         private const val KEY_24H_CLOCK = "use_24h_clock"
         private const val KEY_SHOW_DATE = "show_date"
         private const val KEY_SHOW_BATTERY = "show_battery"
+        private const val KEY_SHOW_AVATAR = "show_avatar"
         private const val KEY_THEME = "theme"
         private const val KEY_MAX_FAVORITES = "max_favorites"
         private const val KEY_FAVORITES = "favorites"

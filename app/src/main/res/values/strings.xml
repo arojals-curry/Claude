@@ -10,6 +10,7 @@
     <string name="clock_format_24h">Use 24-hour clock</string>
     <string name="show_date">Show date</string>
     <string name="show_battery">Show battery percentage</string>
+    <string name="show_avatar">Show Rive avatar</string>
     <string name="font_size">Font size</string>
     <string name="home_alignment">Home alignment</string>
     <string name="theme">Theme</string>
