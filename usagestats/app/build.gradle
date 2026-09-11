@@ -41,6 +41,14 @@ android {
     }
 }
 
+ksp {
+    // Room genera sus clases (_Impl) en Kotlin en vez de Java: evita que el
+    // proyecto tenga fuentes Java, y con ello el paso jlink de AGP para
+    // compilarlas (que en Windows falla si el usuario tiene un espacio en
+    // su carpeta de perfil, p.ej. "C:\Users\Nombre Apellido").
+    arg("room.generateKotlin", "true")
+}
+
 dependencies {
     implementation 'androidx.core:core-ktx:1.12.0'
     implementation 'androidx.activity:activity-compose:1.8.2'
