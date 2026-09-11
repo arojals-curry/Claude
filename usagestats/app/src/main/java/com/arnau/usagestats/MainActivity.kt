@@ -10,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -47,10 +48,12 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.arnau.usagestats.data.AppEntry
+import com.arnau.usagestats.data.AppUsageDisplay
 import com.arnau.usagestats.data.InstalledAppsProvider
 import com.arnau.usagestats.data.UsageAccessChecker
 import com.arnau.usagestats.data.UsageOverview
 import com.arnau.usagestats.data.UsageStatsCalculator
+import com.arnau.usagestats.data.db.AppDatabase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -103,8 +106,19 @@ private fun AppRoot(goHomeSignal: State<Int>) {
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
+    // Pantalla de estadísticas: no forma parte del pager, se abre por encima
+    // de él con un botón desde el listado de apps.
+    var showStats by remember { mutableStateOf(false) }
+    LaunchedEffect(goHomeSignal.value) {
+        showStats = false
+    }
+
     if (hasAccess) {
-        LauncherPager(goHomeSignal)
+        if (showStats) {
+            StatsDetailScreen(onBack = { showStats = false })
+        } else {
+            LauncherPager(goHomeSignal, onOpenStats = { showStats = true })
+        }
     } else {
         PermissionScreen()
     }
@@ -146,7 +160,7 @@ private fun PermissionScreen() {
 /** Pager de 2 páginas: 0 = inicio (reloj + stats), 1 = listado de apps. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun LauncherPager(goHomeSignal: State<Int>) {
+private fun LauncherPager(goHomeSignal: State<Int>, onOpenStats: () -> Unit) {
     val pagerState = rememberPagerState(pageCount = { 2 })
 
     // Cada vez que el usuario vuelve a pulsar el botón de Inicio del sistema,
@@ -161,7 +175,7 @@ private fun LauncherPager(goHomeSignal: State<Int>) {
     ) { page ->
         when (page) {
             0 -> HomeScreen()
-            else -> AppsScreen()
+            else -> AppsScreen(onOpenStats = onOpenStats)
         }
     }
 }
@@ -169,11 +183,13 @@ private fun LauncherPager(goHomeSignal: State<Int>) {
 @Composable
 private fun HomeScreen() {
     val context = LocalContext.current
+    val db = remember { AppDatabase.getInstance(context) }
     var overview by remember { mutableStateOf<UsageOverview?>(null) }
 
     LaunchedEffect(Unit) {
         overview = withContext(Dispatchers.IO) {
-            UsageStatsCalculator.calculate(context)
+            UsageStatsCalculator.syncToday(context, db)
+            UsageStatsCalculator.calculate(context, db)
         }
     }
 
@@ -268,7 +284,7 @@ private fun formatDuration(millis: Long): String {
 
 /** Listado de apps en texto plano, con buscador, sin iconos. */
 @Composable
-private fun AppsScreen() {
+private fun AppsScreen(onOpenStats: () -> Unit) {
     val context = LocalContext.current
     var apps by remember { mutableStateOf<List<AppEntry>>(emptyList()) }
     var query by remember { mutableStateOf("") }
@@ -289,6 +305,14 @@ private fun AppsScreen() {
             .background(Color.Black)
             .padding(horizontal = 24.dp, vertical = 40.dp)
     ) {
+        Text(
+            text = "Estadísticas",
+            color = Color.White.copy(alpha = 0.7f),
+            fontSize = 14.sp,
+            modifier = Modifier
+                .clickable(onClick = onOpenStats)
+                .padding(bottom = 16.dp)
+        )
         TextField(
             value = query,
             onValueChange = { query = it },
@@ -320,6 +344,100 @@ private fun AppsScreen() {
                         }
                         .padding(vertical = 12.dp)
                 )
+            }
+        }
+    }
+}
+
+/** Las 4 cifras de siempre + el desglose de uso de hoy por app, leído de Room. */
+@Composable
+private fun StatsDetailScreen(onBack: () -> Unit) {
+    val context = LocalContext.current
+    val db = remember { AppDatabase.getInstance(context) }
+    var overview by remember { mutableStateOf<UsageOverview?>(null) }
+    var breakdown by remember { mutableStateOf<List<AppUsageDisplay>>(emptyList()) }
+
+    LaunchedEffect(Unit) {
+        val (loadedOverview, loadedBreakdown) = withContext(Dispatchers.IO) {
+            UsageStatsCalculator.calculate(context, db) to UsageStatsCalculator.getTodayBreakdown(context, db)
+        }
+        overview = loadedOverview
+        breakdown = loadedBreakdown
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .padding(horizontal = 24.dp, vertical = 40.dp)
+    ) {
+        Text(
+            text = "← Volver",
+            color = Color.White,
+            fontSize = 16.sp,
+            modifier = Modifier
+                .clickable(onClick = onBack)
+                .padding(bottom = 24.dp)
+        )
+
+        val data = overview
+        if (data == null) {
+            CircularProgressIndicator(color = Color.White)
+        } else {
+            StatBlock(value = data.unlocksToday.toString(), label = "Desbloqueos hoy")
+            Spacer(Modifier.height(20.dp))
+            StatBlock(
+                value = formatAvg(data.avgUnlocksLast7Days),
+                label = "Media desbloqueos (últimos 7 días)"
+            )
+            Spacer(Modifier.height(20.dp))
+            StatBlock(
+                value = formatDuration(data.usageMillisToday),
+                label = "Tiempo de uso hoy"
+            )
+            Spacer(Modifier.height(20.dp))
+            StatBlock(
+                value = formatDuration(data.avgUsageMillisLast7Days.toLong()),
+                label = "Media tiempo de uso (últimos 7 días)"
+            )
+
+            Spacer(Modifier.height(36.dp))
+            Text(
+                text = "Uso de hoy por app",
+                color = Color.White,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Light
+            )
+            Spacer(Modifier.height(12.dp))
+
+            if (breakdown.isEmpty()) {
+                Text(
+                    text = "Todavía no hay datos de hoy.",
+                    color = Color.White.copy(alpha = 0.6f),
+                    fontSize = 14.sp
+                )
+            } else {
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    items(breakdown, key = { it.packageName }) { app ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 10.dp)
+                        ) {
+                            Text(
+                                text = app.displayName,
+                                color = Color.White,
+                                fontSize = 16.sp,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                text = formatDuration(app.durationMs),
+                                color = Color.White.copy(alpha = 0.7f),
+                                fontSize = 16.sp
+                            )
+                        }
+                    }
+                }
             }
         }
     }
