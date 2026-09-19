@@ -49,11 +49,13 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.arnau.usagestats.data.AppEntry
 import com.arnau.usagestats.data.AppUsageDisplay
+import com.arnau.usagestats.data.DateUtils
 import com.arnau.usagestats.data.InstalledAppsProvider
 import com.arnau.usagestats.data.UsageAccessChecker
 import com.arnau.usagestats.data.UsageOverview
 import com.arnau.usagestats.data.UsageStatsCalculator
 import com.arnau.usagestats.data.db.AppDatabase
+import com.arnau.usagestats.data.db.StateSnapshotEntity
 import com.arnau.usagestats.data.mood.StateSnapshotSyncManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -360,6 +362,13 @@ private fun AppsScreen(onOpenStats: () -> Unit) {
     }
 }
 
+private data class StatsScreenData(
+    val overview: UsageOverview,
+    val breakdown: List<AppUsageDisplay>,
+    val moodLine: String?,
+    val snapshots: List<StateSnapshotEntity>
+)
+
 /** Las 4 cifras de siempre + el desglose de uso de hoy por app, leído de Room. */
 @Composable
 private fun StatsDetailScreen(onBack: () -> Unit) {
@@ -368,41 +377,49 @@ private fun StatsDetailScreen(onBack: () -> Unit) {
     var overview by remember { mutableStateOf<UsageOverview?>(null) }
     var breakdown by remember { mutableStateOf<List<AppUsageDisplay>>(emptyList()) }
     var moodLine by remember { mutableStateOf<String?>(null) }
+    var snapshots by remember { mutableStateOf<List<StateSnapshotEntity>>(emptyList()) }
 
     LaunchedEffect(Unit) {
-        val (loadedOverview, loadedBreakdown, loadedMoodLine) = withContext(Dispatchers.IO) {
+        val loaded = withContext(Dispatchers.IO) {
             val moodSnapshot = db.stateSnapshotDao().getLatestUnlockSnapshot()
-            val line = moodSnapshot?.let { "${it.mood} (${it.triggeredBy})" }
-            Triple(
-                UsageStatsCalculator.calculate(context, db),
-                UsageStatsCalculator.getTodayBreakdown(context, db),
-                line
+            val today = DateUtils.dateKey(Calendar.getInstance())
+            StatsScreenData(
+                overview = UsageStatsCalculator.calculate(context, db),
+                breakdown = UsageStatsCalculator.getTodayBreakdown(context, db),
+                moodLine = moodSnapshot?.let { "${it.mood} (${it.triggeredBy})" },
+                snapshots = db.stateSnapshotDao().getForDate(today)
             )
         }
-        overview = loadedOverview
-        breakdown = loadedBreakdown
-        moodLine = loadedMoodLine
+        overview = loaded.overview
+        breakdown = loaded.breakdown
+        moodLine = loaded.moodLine
+        snapshots = loaded.snapshots
     }
 
-    Column(
+    val data = overview
+    LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
             .padding(horizontal = 24.dp, vertical = 40.dp)
     ) {
-        Text(
-            text = "← Volver",
-            color = Color.White,
-            fontSize = 16.sp,
-            modifier = Modifier
-                .clickable(onClick = onBack)
-                .padding(bottom = 24.dp)
-        )
+        item {
+            Text(
+                text = "← Volver",
+                color = Color.White,
+                fontSize = 16.sp,
+                modifier = Modifier
+                    .clickable(onClick = onBack)
+                    .padding(bottom = 24.dp)
+            )
+        }
 
-        val data = overview
         if (data == null) {
-            CircularProgressIndicator(color = Color.White)
-        } else {
+            item { CircularProgressIndicator(color = Color.White) }
+            return@LazyColumn
+        }
+
+        item {
             StatBlock(value = data.unlocksToday.toString(), label = "Desbloqueos hoy")
             Spacer(Modifier.height(20.dp))
             StatBlock(
@@ -440,29 +457,70 @@ private fun StatsDetailScreen(onBack: () -> Unit) {
                     color = Color.White.copy(alpha = 0.6f),
                     fontSize = 14.sp
                 )
-            } else {
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    items(breakdown, key = { it.packageName }) { app ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 10.dp)
-                        ) {
-                            Text(
-                                text = app.displayName,
-                                color = Color.White,
-                                fontSize = 16.sp,
-                                modifier = Modifier.weight(1f)
-                            )
-                            Text(
-                                text = formatDuration(app.durationMs),
-                                color = Color.White.copy(alpha = 0.7f),
-                                fontSize = 16.sp
-                            )
-                        }
-                    }
-                }
             }
         }
+
+        items(breakdown, key = { "app-${it.packageName}" }) { app ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 10.dp)
+            ) {
+                Text(
+                    text = app.displayName,
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = formatDuration(app.durationMs),
+                    color = Color.White.copy(alpha = 0.7f),
+                    fontSize = 16.sp
+                )
+            }
+        }
+
+        item {
+            Spacer(Modifier.height(36.dp))
+            Text(
+                text = "Tabla de estados (state_snapshots de hoy)",
+                color = Color.White,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Light
+            )
+            Text(
+                text = "hora  trigger  scr  unl  idle  → mood",
+                color = Color.White.copy(alpha = 0.5f),
+                fontSize = 12.sp
+            )
+            Spacer(Modifier.height(12.dp))
+
+            if (snapshots.isEmpty()) {
+                Text(
+                    text = "Todavía no hay snapshots de hoy.",
+                    color = Color.White.copy(alpha = 0.6f),
+                    fontSize = 14.sp
+                )
+            }
+        }
+
+        items(snapshots, key = { "snap-${it.id}" }) { snapshot ->
+            Text(
+                text = formatSnapshotRow(snapshot),
+                color = if (snapshot.trigger == "unlock") Color.White else Color.White.copy(alpha = 0.5f),
+                fontSize = 13.sp,
+                modifier = Modifier.padding(vertical = 4.dp)
+            )
+        }
     }
+}
+
+private fun formatSnapshotRow(snapshot: StateSnapshotEntity): String {
+    val time = SimpleDateFormat("HH:mm", Locale.getDefault()).format(java.util.Date(snapshot.capturedAt))
+    val trigger = if (snapshot.trigger == "unlock") "unlock" else "tick  "
+    val screenRatio = String.format(Locale.US, "%.2f", snapshot.screenRatio)
+    val unlockRatio = String.format(Locale.US, "%.2f", snapshot.unlockRatio)
+    val idle = formatDuration(snapshot.idleMs)
+    val moodPart = snapshot.mood?.let { " → $it (${snapshot.triggeredBy})" } ?: ""
+    return "$time  $trigger  scr=$screenRatio unl=$unlockRatio idle=$idle$moodPart"
 }
