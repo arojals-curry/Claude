@@ -186,13 +186,18 @@ private fun HomeScreen() {
     val context = LocalContext.current
     val db = remember { AppDatabase.getInstance(context) }
     var overview by remember { mutableStateOf<UsageOverview?>(null) }
+    var moodLine by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
-        overview = withContext(Dispatchers.IO) {
+        val (loadedOverview, loadedMoodLine) = withContext(Dispatchers.IO) {
             UsageStatsCalculator.syncToday(context, db)
             StateSnapshotSyncManager.onWake(context, db)
-            UsageStatsCalculator.calculate(context, db)
+            val moodSnapshot = db.stateSnapshotDao().getLatestUnlockSnapshot()
+            val line = moodSnapshot?.let { "${it.mood} (${it.triggeredBy})" }
+            UsageStatsCalculator.calculate(context, db) to line
         }
+        overview = loadedOverview
+        moodLine = loadedMoodLine
     }
 
     val data = overview
@@ -205,7 +210,11 @@ private fun HomeScreen() {
         verticalArrangement = Arrangement.Center
     ) {
         Clock()
-        Spacer(Modifier.height(48.dp))
+        Spacer(Modifier.height(32.dp))
+        moodLine?.let { line ->
+            StatBlock(value = line, label = "Mood")
+            Spacer(Modifier.height(32.dp))
+        }
         if (data == null) {
             CircularProgressIndicator(color = Color.White)
         } else {
