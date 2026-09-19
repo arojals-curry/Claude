@@ -6,9 +6,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import com.arnau.usagestats.data.db.AppDatabase
 import com.arnau.usagestats.data.db.AppEntity
-import java.text.SimpleDateFormat
 import java.util.Calendar
-import java.util.Locale
 
 data class UsageOverview(
     val unlocksToday: Int,
@@ -38,20 +36,20 @@ object UsageStatsCalculator {
     suspend fun calculate(context: Context, db: AppDatabase): UsageOverview {
         val usm = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
 
-        val todayStart = startOfDay(Calendar.getInstance()).timeInMillis
+        val todayStart = DateUtils.startOfDay(Calendar.getInstance()).timeInMillis
         val now = System.currentTimeMillis()
 
         val unlocksToday = countUnlocks(usm, todayStart, now)
 
-        val sevenDaysAgoStart = startOfDay(daysAgo(7)).timeInMillis
+        val sevenDaysAgoStart = DateUtils.startOfDay(DateUtils.daysAgo(7)).timeInMillis
         val unlocksByDay = countUnlocksPerDay(usm, sevenDaysAgoStart, todayStart)
         val avgUnlocks = unlocksByDay.values.sum().toDouble() / 7.0
 
         val usageDailyDao = db.usageDailyDao()
-        val today = dateKey(Calendar.getInstance())
+        val today = DateUtils.dateKey(Calendar.getInstance())
         val usageToday = usageDailyDao.getForDate(today).sumOf { it.durationMs }
 
-        val last7Dates = (1..7).map { dateKey(daysAgo(it)) }
+        val last7Dates = (1..7).map { DateUtils.dateKey(DateUtils.daysAgo(it)) }
         val avgUsage = usageDailyDao.sumDurationByPackage(last7Dates).sumOf { it.totalDuration }.toDouble() / 7.0
 
         return UsageOverview(
@@ -64,7 +62,7 @@ object UsageStatsCalculator {
 
     /** Lista de apps usadas hoy, ordenada de más a menos tiempo. Lee de Room, no recalcula nada. */
     suspend fun getTodayBreakdown(context: Context, db: AppDatabase): List<AppUsageDisplay> {
-        val today = dateKey(Calendar.getInstance())
+        val today = DateUtils.dateKey(Calendar.getInstance())
         val rows = db.usageDailyDao().getForDate(today)
         return rows.map { row ->
             val displayName = db.appDao().getByPackage(row.packageName)?.displayName ?: row.packageName
@@ -80,9 +78,9 @@ object UsageStatsCalculator {
     /** Vuelca en Room el tiempo de uso y las aperturas de hoy, por app. Llamar al abrir la home. */
     suspend fun syncToday(context: Context, db: AppDatabase) {
         val usm = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
-        val todayStart = startOfDay(Calendar.getInstance()).timeInMillis
+        val todayStart = DateUtils.startOfDay(Calendar.getInstance()).timeInMillis
         val now = System.currentTimeMillis()
-        val today = dateKey(Calendar.getInstance())
+        val today = DateUtils.dateKey(Calendar.getInstance())
 
         val durations = perAppUsageForRange(usm, todayStart, now)
         val opens = perAppOpensForRange(usm, todayStart, now)
@@ -110,21 +108,10 @@ object UsageStatsCalculator {
         }
     }
 
-    // SimpleDateFormat no es thread-safe: se crea una instancia por llamada
-    // en vez de compartir un campo mutable entre corrutinas concurrentes.
-    private fun dateKey(cal: Calendar): String =
-        SimpleDateFormat("yyyy-MM-dd", Locale.US).format(cal.time)
-
-    private fun daysAgo(days: Int): Calendar =
-        (Calendar.getInstance().clone() as Calendar).apply { add(Calendar.DAY_OF_YEAR, -days) }
-
-    private fun startOfDay(cal: Calendar): Calendar {
-        val c = cal.clone() as Calendar
-        c.set(Calendar.HOUR_OF_DAY, 0)
-        c.set(Calendar.MINUTE, 0)
-        c.set(Calendar.SECOND, 0)
-        c.set(Calendar.MILLISECOND, 0)
-        return c
+    /** Cuenta KEYGUARD_HIDDEN en [start, end). Público: lo reutiliza también el motor de mood. */
+    suspend fun countUnlocksInRange(context: Context, start: Long, end: Long): Int {
+        val usm = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+        return countUnlocks(usm, start, end)
     }
 
     private fun perAppUsageForRange(usm: UsageStatsManager, start: Long, end: Long): Map<String, Long> {
@@ -171,7 +158,7 @@ object UsageStatsCalculator {
             events.getNextEvent(event)
             if (event.eventType != UsageEvents.Event.KEYGUARD_HIDDEN) continue
             bucketCal.timeInMillis = event.timeStamp
-            val dayKey = startOfDay(bucketCal).timeInMillis
+            val dayKey = DateUtils.startOfDay(bucketCal).timeInMillis
             result[dayKey] = (result[dayKey] ?: 0) + 1
         }
         return result
