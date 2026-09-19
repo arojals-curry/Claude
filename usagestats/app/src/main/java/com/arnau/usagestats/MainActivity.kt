@@ -54,6 +54,7 @@ import com.arnau.usagestats.data.UsageAccessChecker
 import com.arnau.usagestats.data.UsageOverview
 import com.arnau.usagestats.data.UsageStatsCalculator
 import com.arnau.usagestats.data.db.AppDatabase
+import com.arnau.usagestats.data.mood.StateSnapshotSyncManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -189,6 +190,7 @@ private fun HomeScreen() {
     LaunchedEffect(Unit) {
         overview = withContext(Dispatchers.IO) {
             UsageStatsCalculator.syncToday(context, db)
+            StateSnapshotSyncManager.onWake(context, db)
             UsageStatsCalculator.calculate(context, db)
         }
     }
@@ -356,13 +358,21 @@ private fun StatsDetailScreen(onBack: () -> Unit) {
     val db = remember { AppDatabase.getInstance(context) }
     var overview by remember { mutableStateOf<UsageOverview?>(null) }
     var breakdown by remember { mutableStateOf<List<AppUsageDisplay>>(emptyList()) }
+    var moodLine by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
-        val (loadedOverview, loadedBreakdown) = withContext(Dispatchers.IO) {
-            UsageStatsCalculator.calculate(context, db) to UsageStatsCalculator.getTodayBreakdown(context, db)
+        val (loadedOverview, loadedBreakdown, loadedMoodLine) = withContext(Dispatchers.IO) {
+            val moodSnapshot = db.stateSnapshotDao().getLatestUnlockSnapshot()
+            val line = moodSnapshot?.let { "${it.mood} (${it.triggeredBy})" }
+            Triple(
+                UsageStatsCalculator.calculate(context, db),
+                UsageStatsCalculator.getTodayBreakdown(context, db),
+                line
+            )
         }
         overview = loadedOverview
         breakdown = loadedBreakdown
+        moodLine = loadedMoodLine
     }
 
     Column(
@@ -400,6 +410,11 @@ private fun StatsDetailScreen(onBack: () -> Unit) {
                 value = formatDuration(data.avgUsageMillisLast7Days.toLong()),
                 label = "Media tiempo de uso (últimos 7 días)"
             )
+
+            moodLine?.let { line ->
+                Spacer(Modifier.height(20.dp))
+                StatBlock(value = line, label = "Mood (motor TIM-23, sin avatar todavía)")
+            }
 
             Spacer(Modifier.height(36.dp))
             Text(
